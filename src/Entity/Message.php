@@ -26,6 +26,8 @@ class Message
     #[ORM\ManyToOne(targetEntity: 'Conversation', inversedBy: "messages")]
     private $conversation;
 
+    private $mine;
+
     private ?int $createAt = null;
 
 //    private ?\DateTimeInterface $createdAt = null;
@@ -81,5 +83,21 @@ class Message
         $this->createAt = $createAt;
 
         return $this;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getMine()
+    {
+        return $this->mine;
+    }
+
+    /**
+     * @param mixed $mine
+     */
+    public function setMine($mine): void
+    {
+        $this->mine = $mine;
     }
 }
