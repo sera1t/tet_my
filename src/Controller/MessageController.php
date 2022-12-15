@@ -5,8 +5,11 @@ namespace App\Controller;
 use App\Entity\Conversation;
 use App\Entity\Message;
 use App\Repository\MessageRepository;
+use App\Repository\UserRepository;
+use Doctrine\DBAL\Exception;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -19,15 +22,17 @@ class MessageController extends AbstractController
 
     private EntityManagerInterface $entityManager;
     private MessageRepository $messageRepository;
+    private UserRepository $userRepository;
 
-    public function __construct(EntityManagerInterface $entityManager, MessageRepository $messageRepository)
+    public function __construct(EntityManagerInterface $entityManager, MessageRepository $messageRepository, UserRepository $userRepository)
     {
 
         $this->entityManager = $entityManager;
         $this->messageRepository = $messageRepository;
+        $this->userRepository = $userRepository;
     }
 
-    #[Route('/{id}', name: 'getMessages')]
+    #[Route('/{id}', name: 'getMessages', methods: "GET")]
     public function index(Request $request, Conversation $conversation): Response
     {
 
@@ -41,14 +46,45 @@ class MessageController extends AbstractController
 
         array_map(function ($message){
             $message->setMine(
-                $message->getUser()->getId() === $this->getUser()->getId() ? true: false
+                $message->getUser()->getId() === $this->getUser()->getId()
             );
         }, $messages);
+//        var_dump($messages);
+        return $this->json($messages);
 
+    }
 
+    /**
+     * @throws Exception
+     */
+    #[Route('/{id}', name: 'newMessage', methods: "POST")]
+    public function newMessage(Request $request, Conversation $conversation): JsonResponse
+    {
+        // TODO: put everything back
+        $user = $this->getUser();
+        $content = $request->get('content', null);
 
-        return $this->json($message, Response::HTTP_OK, [], [
-            'attributes' => self::ATTRIBUTES_TO_SERIALIZE
+        $message = new Message();
+        $message->setContent($content);
+        $message->setUser($this->userRepository->findOneBy(['id'=>1]));
+        $message->setMine(true);
+
+        $conversation->addMessage($message);
+        $conversation->setLastMessage($message);
+
+        $this->entityManager->getConnection()->beginTransaction();
+        try {
+            $this->entityManager->persist($message);
+            $this->entityManager->persist($conversation);
+            $this->entityManager->flush();
+            $this->entityManager->commit();
+        }catch(\Exception $e) {
+            $this->entityManager->rollback();
+            throw $e;
+        };
+
+        return $this->json($message, Response::HTTP_CREATED, [], [
+            'attributes'=>self::ATTRIBUTES_TO_SERIALIZE
         ]);
     }
 }

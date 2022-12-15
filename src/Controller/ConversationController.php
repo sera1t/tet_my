@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\WebLink\Link;
 
 #[Route('/conversation', name: 'conversations.')]
 
@@ -85,11 +86,16 @@ class ConversationController extends AbstractController
         ], Response::HTTP_CREATED, [], []);
     }
 
+    /**
+     * @param Request $request
+     * @return JsonResponse
+     */
     #[Route('/', name: 'getConversation', methods: 'GET')]
-    public function getConvs()
+    public function getConvs(Request $request)
     {
         $conversation = $this->conversationRepository->findConversationByUser($this->getUser()->getId());
+        $hubUrl = $this->getParameter('mercure.default_hub');
+        $this->addLink($request, new Link('mercure', $hubUrl));
         return $this->json($conversation);
     }
-
 }
